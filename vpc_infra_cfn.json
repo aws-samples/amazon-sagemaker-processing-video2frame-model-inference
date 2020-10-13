@@ -1,0 +1,242 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description" : "Infrastructure resources for VPC env for SageMaker Processing",
+  "Parameters": {
+    "SubnetCidrBlock1": {
+      "Description": "CidrBlock for subnet 1. CidrBlock has 256 IPs total",
+      "Type": "String",
+      "Default": "192.168.0.0/24"
+    },
+    "SubnetCidrBlock2": {
+      "Description": "CidrBlock for subnet 2. CidrBlock has 256 IPs total",
+      "Type": "String",
+      "Default": "192.168.1.0/24"
+    }
+  },
+
+  "Mappings" : {
+    "AWSRegionArch2AMI" : {
+      "us-east-1"        : {"HVM64" : "ami-0080e4c5bc078760e", "HVMG2" : "ami-0aeb704d503081ea6"},
+      "us-west-2"        : {"HVM64" : "ami-01e24be29428c15b2", "HVMG2" : "ami-0fe84a5b4563d8f27"},
+      "us-west-1"        : {"HVM64" : "ami-0ec6517f6edbf8044", "HVMG2" : "ami-0a7fc72dc0e51aa77"},
+      "eu-west-1"        : {"HVM64" : "ami-08935252a36e25f85", "HVMG2" : "ami-0d5299b1c6112c3c7"},
+      "eu-west-2"        : {"HVM64" : "ami-01419b804382064e4", "HVMG2" : "NOT_SUPPORTED"},
+      "eu-west-3"        : {"HVM64" : "ami-0dd7e7ed60da8fb83", "HVMG2" : "NOT_SUPPORTED"},
+      "eu-central-1"     : {"HVM64" : "ami-0cfbf4f6db41068ac", "HVMG2" : "ami-0aa1822e3eb913a11"},
+      "eu-north-1"       : {"HVM64" : "ami-86fe70f8", "HVMG2" : "ami-32d55b4c"},
+      "ap-northeast-1"   : {"HVM64" : "ami-00a5245b4816c38e6", "HVMG2" : "ami-09d0e0e099ecabba2"},
+      "ap-northeast-2"   : {"HVM64" : "ami-00dc207f8ba6dc919", "HVMG2" : "NOT_SUPPORTED"},
+      "ap-northeast-3"   : {"HVM64" : "ami-0b65f69a5c11f3522", "HVMG2" : "NOT_SUPPORTED"},
+      "ap-southeast-1"   : {"HVM64" : "ami-05b3bcf7f311194b3", "HVMG2" : "ami-0e46ce0d6a87dc979"},
+      "ap-southeast-2"   : {"HVM64" : "ami-02fd0b06f06d93dfc", "HVMG2" : "ami-0c0ab057a101d8ff2"},
+      "ap-south-1"       : {"HVM64" : "ami-0ad42f4f66f6c1cc9", "HVMG2" : "ami-0244c1d42815af84a"},
+      "us-east-2"        : {"HVM64" : "ami-0cd3dfa4e37921605", "HVMG2" : "NOT_SUPPORTED"},
+      "ca-central-1"     : {"HVM64" : "ami-07423fb63ea0a0930", "HVMG2" : "NOT_SUPPORTED"},
+      "sa-east-1"        : {"HVM64" : "ami-05145e0b28ad8e0b2", "HVMG2" : "NOT_SUPPORTED"},
+      "cn-north-1"       : {"HVM64" : "ami-053617c9d818c1189", "HVMG2" : "NOT_SUPPORTED"},
+      "cn-northwest-1"   : {"HVM64" : "ami-0f7937761741dc640", "HVMG2" : "NOT_SUPPORTED"}
+    }
+  },
+
+  "Resources" : {
+    "VPC": {
+      "Metadata": {
+        "Comment": "VPC for sagemaker processing job."
+      },
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "192.168.0.0/16",
+        "EnableDnsHostnames": "false",
+        "EnableDnsSupport": "true"
+      }
+    },
+    "Subnet1": {
+      "Metadata": {
+        "Comment": "Subnet 1 for sagemaker processing job."
+      },
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            "0",
+            {
+              "Fn::GetAZs": {
+                "Ref": "AWS::Region"
+              }
+            }
+          ]
+        },
+        "CidrBlock": {
+          "Ref": "SubnetCidrBlock1"
+        },
+        "VpcId": {
+          "Ref": "VPC"
+        }
+      }
+    },
+    "Subnet2": {
+      "Metadata": {
+        "Comment": "Subnet 2 for sagemaker processing job."
+      },
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            "1",
+            {
+              "Fn::GetAZs": {
+                "Ref": "AWS::Region"
+              }
+            }
+          ]
+        },
+        "CidrBlock": {
+          "Ref": "SubnetCidrBlock2"
+        },
+        "VpcId": {
+          "Ref": "VPC"
+        }
+      }
+    },
+    "SecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" },
+        "GroupDescription": "Customer VPC Security Group"
+      }
+    },
+    "SecurityGroupIngress": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": { "Ref": "SecurityGroup" },
+        "IpProtocol": "tcp",
+        "ToPort": "65535",
+        "FromPort": "0",
+        "SourceSecurityGroupId": { "Ref": "SecurityGroup" }
+      }
+    },
+    "RouteTable": {
+      "Type" : "AWS::EC2::RouteTable",
+      "Properties" : {
+        "VpcId" : { "Ref": "VPC" }
+      }
+    },
+    "Subnet1RouteTableAssociation": {
+      "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties" : {
+        "RouteTableId" : { "Ref": "RouteTable" },
+        "SubnetId" : { "Ref": "Subnet1" }
+      }
+    },
+    "Subnet2RouteTableAssociation": {
+      "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties" : {
+        "RouteTableId" : { "Ref": "RouteTable" },
+        "SubnetId" : { "Ref": "Subnet2" }
+      }
+    },
+    "VpcEndpoint": {
+      "Type" : "AWS::EC2::VPCEndpoint",
+      "Properties" : {
+        "PolicyDocument" : {
+          "Version":"2012-10-17",
+          "Statement":[
+            {
+              "Action":[
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:ListBucket",
+                "s3:GetBucketLocation",
+                "s3:DeleteObject",
+                "s3:ListMultipartUploadParts",
+                "s3:AbortMultipartUpload"
+              ],
+              "Effect":"Allow",
+              "Resource":["*"],
+              "Principal": "*"
+            }
+          ]
+        },
+        "RouteTableIds" : [
+          {
+            "Ref": "RouteTable"
+          }
+        ],
+        "ServiceName" : {
+          "Fn::Join": [
+            "",
+            [
+              "com.amazonaws.",
+              {
+                "Ref": "AWS::Region"
+              },
+              ".s3"
+            ]
+          ]
+        },
+        "VpcId" : { "Ref": "VPC" }
+      }
+    },
+    "WebServer": {
+      "Type" : "AWS::EC2::Instance",
+      "Properties": {
+        "ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" }, "HVM64"] },
+        "InstanceType"   : "t2.small",
+        "SecurityGroupIds" : [ { "Fn::GetAtt" : [ "WebServerSecurityGroup", "GroupId" ]} ],
+        "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
+                      "#!/bin/bash\n",
+                      "yum update -y\n",
+                      "yum install -y httpd\n",
+                      "service httpd start\n",
+                      "usermod -a -G apache ec2-user\n",
+                      "chown -R ec2-user:apache /var/www\n",
+                      "chmod 2775 /var/www\n",
+                      "echo \"Hello, Builders!\" > /var/www/html/index.html\n"]]}
+                      },
+      "Tags" : [ {"Key" : "Name", "Value" : "SageMakerProcessingDemo"}],
+      "SubnetId" : {"Ref" : "Subnet1"}
+      }
+    },
+    "WebServerSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+      "GroupDescription" : "Enable HTTP access via port 80 locked down to the Vpc",
+      "SecurityGroupIngress" : [
+        {"IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : "192.168.0.0/16"}
+      ],
+      "VpcId" : {"Ref": "VPC"}
+    }
+  }
+  },
+
+  "Outputs": {
+    "VpcId": {
+      "Description": "Vpc ID",
+      "Value": {
+        "Ref": "VPC"
+      }
+    },
+    "Subnet1Id": {
+      "Description": "Subnet1 ID",
+      "Value": {
+        "Ref": "Subnet1"
+      }
+    },
+    "Subnet2Id": {
+      "Description": "Subnet2 ID",
+      "Value": {
+        "Ref": "Subnet2"
+      }
+    },
+    "SecurityGroupId": {
+      "Description": "Security Group ID",
+      "Value": {
+        "Ref": "SecurityGroup"
+      }
+    },
+    "APIServerAddr": {
+      "Description": "API Server Private Addr",
+      "Value": { "Fn::GetAtt" : [ "WebServer", "PrivateIp" ]}
+    }
+  }
+}
