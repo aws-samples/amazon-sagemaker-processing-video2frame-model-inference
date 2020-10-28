@@ -16,17 +16,18 @@
 # ***************************************************************************************
 import argparse
 import os
-import warnings
 import shutil
+import warnings
+
+import cv2
+import gluoncv
+import matplotlib.image as mpimg
 import mxnet as mx
+import requests
+from gluoncv.data.transforms.presets.segmentation import test_transform
+from gluoncv.utils.viz import get_color_pallete
 from mxnet import image
 from mxnet.gluon.data.vision import transforms
-from gluoncv.data.transforms.presets.segmentation import test_transform
-import gluoncv
-from gluoncv.utils.viz import get_color_pallete
-import matplotlib.image as mpimg
-import requests
-import cv2
 
 
 def video2frame(video_src_path, video, frames_save_path, frame_width, frame_height, interval):
@@ -74,8 +75,14 @@ def video2frame(video_src_path, video, frames_save_path, frame_width, frame_heig
 
 
 if __name__=='__main__':
+    
     parser = argparse.ArgumentParser()
     parser.add_argument('--api_server_address', type=str, default='')
+    parser.add_argument('--video_formats', type=list, default=[".mp4", ".avi"])
+    parser.add_argument('--image_width', type=int, default=1280)
+    parser.add_argument('--image_height', type=int, default=720)
+    parser.add_argument('--frame_time_interval', type=int, default=1000)
+    
     args, _ = parser.parse_known_args()
     
     print('Received arguments {}'.format(args))
@@ -100,11 +107,11 @@ if __name__=='__main__':
     
     # Extract frame from videos
     videos_src_path = input_data_path
-    video_formats = [".mp4", ".avi"]
     frames_save_path = "/opt/ml/processing/frame_data/"
-    width = 1280
-    height = 720
-    time_interval = 1000
+    video_formats = args.video_formats
+    width = args.image_width
+    height = args.image_height
+    time_interval = args.frame_time_interval
     
     video_dirs = os.listdir(input_data_path)
 
