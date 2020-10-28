@@ -31,7 +31,9 @@ from mxnet import image
 from mxnet.gluon.data.vision import transforms
 
 
-def video2frame(video_src_path, video, frames_save_path, frame_width, frame_height, interval):
+def video2frame(
+    video_src_path, video, frames_save_path, frame_width, frame_height, interval
+):
     """
     Extract frame from video by interval
     :param video_src_path: video src path
@@ -42,14 +44,14 @@ def video2frame(video_src_path, video, frames_save_path, frame_width, frame_heig
     :param interval:　interval for frame to extract
     :return:　frame images
     """
-    video_name = video[:-4].split('/')[-1]
-    print ("reading video ：", video_name)
+    video_name = video[:-4].split("/")[-1]
+    print("reading video ：", video_name)
 
     os.makedirs(frames_save_path + video_name, exist_ok=True)
     each_frame_save_full_path = os.path.join(frames_save_path, video_name) + "/"
-    print('each_frame_save_full_path ' + each_frame_save_full_path)
+    print("each_frame_save_full_path " + each_frame_save_full_path)
     each_video_full_path = os.path.join(video_src_path, video)
-    print('each_video_full_path is ' + each_video_full_path)
+    print("each_video_full_path is " + each_video_full_path)
     cap = cv2.VideoCapture(each_video_full_path)
     frame_index = 0
     frame_count = 0
@@ -59,80 +61,102 @@ def video2frame(video_src_path, video, frames_save_path, frame_width, frame_heig
         success = False
         print("Read failed!")
 
-    while(success):
+    while success:
         success, frame = cap.read()
 
         if frame_index % interval == 0:
             print("---> Reading the %d frame:" % frame_index, success)
-            resize_frame = cv2.resize(frame, (frame_width, frame_height), interpolation=cv2.INTER_AREA)
+            resize_frame = cv2.resize(
+                frame, (frame_width, frame_height), interpolation=cv2.INTER_AREA
+            )
             # cv2.imwrite(each_video_save_full_path + each_video_name + "_%d.jpg" % frame_index, resize_frame)
-            cv2.imwrite(each_frame_save_full_path + "%d.png" % frame_count, resize_frame,[int( cv2.IMWRITE_JPEG_QUALITY), 95])
+            cv2.imwrite(
+                each_frame_save_full_path + "%d.png" % frame_count,
+                resize_frame,
+                [int(cv2.IMWRITE_JPEG_QUALITY), 95],
+            )
             frame_count += 1
 
         frame_index += 1
- 
+
     cap.release()
     return each_frame_save_full_path
 
 
-if __name__=='__main__':
-    
+if __name__ == "__main__":
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('--api_server_address', type=str, default='')
-    parser.add_argument('--video_formats', type=str, default='.mp4')
-    parser.add_argument('--image_width', type=str, default='1280')
-    parser.add_argument('--image_height', type=str, default='720')
-    parser.add_argument('--frame_time_interval', type=str, default='1000')
-    
+    parser.add_argument("--api_server_address", type=str, default="")
+    parser.add_argument("--video_formats", type=str, default=".mp4")
+    parser.add_argument("--image_width", type=str, default="1280")
+    parser.add_argument("--image_height", type=str, default="720")
+    parser.add_argument("--frame_time_interval", type=str, default="1000")
+
     args, _ = parser.parse_known_args()
-    
-    print('Received arguments {}'.format(args))
+
+    print("Received arguments {}".format(args))
 
     # Use GPU if available
-    if len(mx.test_utils.list_gpus())!=0:#return range(0, 4)
-        ctx=mx.gpu() #default gpu(0)
+    if len(mx.test_utils.list_gpus()) != 0:  # return range(0, 4)
+        ctx = mx.gpu()  # default gpu(0)
     else:
-        ctx=mx.cpu()
-    
-    model = gluoncv.model_zoo.get_model('deeplab_resnet101_citys', pretrained=True, ctx=ctx) # load the pretrained model trained on Cityscapes dataset
-    
-    input_data_path = '/opt/ml/processing/input_data'
-    output_data_path = '/opt/ml/processing/output_data'
-    print('Reading input data from {}'.format(input_data_path))
-    
-    
-    # Mock call API within VPC, change this link and logic accordingly 
+        ctx = mx.cpu()
+
+    model = gluoncv.model_zoo.get_model(
+        "deeplab_resnet101_citys", pretrained=True, ctx=ctx
+    )  # load the pretrained model trained on Cityscapes dataset
+
+    input_data_path = "/opt/ml/processing/input_data"
+    output_data_path = "/opt/ml/processing/output_data"
+    print("Reading input data from {}".format(input_data_path))
+
+    # Mock call API within VPC, change this link and logic accordingly
     api_server_addr = args.api_server_address
-    r=requests.get("http://" + api_server_addr)
+    r = requests.get("http://" + api_server_addr)
     print(r.text)
-    
+
     # Extract frame from videos
     videos_src_path = input_data_path
     frames_save_path = "/opt/ml/processing/frame_data/"
-    video_formats = tuple(args.video_formats[1:].split('.'))
+    video_formats = tuple(args.video_formats[1:].split("."))
     width = int(args.image_width)
     height = int(args.image_height)
     time_interval = int(args.frame_time_interval)
-    
+
     video_dirs = os.listdir(input_data_path)
 
     for video in video_dirs:
         if video.endswith(video_formats):
-            frame_save_full_path = video2frame(input_data_path, video, frames_save_path, width, height, time_interval)
-            print('frame_save_full_path is ' + frame_save_full_path)
-            
+            frame_save_full_path = video2frame(
+                input_data_path, video, frames_save_path, width, height, time_interval
+            )
+            print("frame_save_full_path is " + frame_save_full_path)
+
             file_dirs = os.listdir(frame_save_full_path)
-            video_name = video[:-4].split('/')[-1]
+            video_name = video[:-4].split("/")[-1]
 
             # inference by using pretrained model
             for file in file_dirs:
-                if file.endswith(('.bmp', '.dib', '.png', '.jpg', '.jpeg', '.pbm', '.pgm', '.ppm', '.tif', '.tiff')):
+                if file.endswith(
+                    (
+                        ".bmp",
+                        ".dib",
+                        ".png",
+                        ".jpg",
+                        ".jpeg",
+                        ".pbm",
+                        ".pgm",
+                        ".ppm",
+                        ".tif",
+                        ".tiff",
+                    )
+                ):
                     img = image.imread(os.path.join(frame_save_full_path, file))
                     img = test_transform(img, ctx)
                     output = model.predict(img)
                     predict = mx.nd.squeeze(mx.nd.argmax(output, 1)).asnumpy()
-                    mask = get_color_pallete(predict, 'citys')
-                    mask.save(os.path.join(output_data_path, video_name + '_' + file))
+                    mask = get_color_pallete(predict, "citys")
+                    mask.save(os.path.join(output_data_path, video_name + "_" + file))
 
         else:
             continue
