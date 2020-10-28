@@ -9,7 +9,7 @@ Amazon SageMaker Processing, a new capability of Amazon SageMaker that lets cust
 In this sample, we would lauch a sagemaker processing job in a VPC, the input is videos in S3, and output is inference results (segmentation images) and will be stored in S3.
 
 1. Launch an EC2 instance to play as API server which could be called by sagemaker processing job.
-2. We use pretrained model to do semantic segmentation infenrence from GluonCV model zoo.
+2. We use pretrained model to do semantic segmentation inference from GluonCV model zoo.
 3. Enable Sagemaker Processing vpc mode so it could call API server.
 
 Here is the high level architecture of this sample.
