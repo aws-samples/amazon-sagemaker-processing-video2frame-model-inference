@@ -19,11 +19,12 @@ import os
 import shutil
 import warnings
 
+import matplotlib.image as mpimg
+import requests
+
 import cv2
 import gluoncv
-import matplotlib.image as mpimg
 import mxnet as mx
-import requests
 from gluoncv.data.transforms.presets.segmentation import test_transform
 from gluoncv.utils.viz import get_color_pallete
 from mxnet import image
@@ -78,10 +79,10 @@ if __name__=='__main__':
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--api_server_address', type=str, default='')
-    parser.add_argument('--video_formats', type=list, default=[".mp4", ".avi"])
-    parser.add_argument('--image_width', type=int, default=1280)
-    parser.add_argument('--image_height', type=int, default=720)
-    parser.add_argument('--frame_time_interval', type=int, default=1000)
+    parser.add_argument('--video_formats', type=str, default='.mp4')
+    parser.add_argument('--image_width', type=str, default='1280')
+    parser.add_argument('--image_height', type=str, default='720')
+    parser.add_argument('--frame_time_interval', type=str, default='1000')
     
     args, _ = parser.parse_known_args()
     
@@ -108,15 +109,15 @@ if __name__=='__main__':
     # Extract frame from videos
     videos_src_path = input_data_path
     frames_save_path = "/opt/ml/processing/frame_data/"
-    video_formats = args.video_formats
-    width = args.image_width
-    height = args.image_height
-    time_interval = args.frame_time_interval
+    video_formats = tuple(args.video_formats[1:].split('.'))
+    width = int(args.image_width)
+    height = int(args.image_height)
+    time_interval = int(args.frame_time_interval)
     
     video_dirs = os.listdir(input_data_path)
 
     for video in video_dirs:
-        if video.endswith(('.mp4', '.avi')):
+        if video.endswith(video_formats):
             frame_save_full_path = video2frame(input_data_path, video, frames_save_path, width, height, time_interval)
             print('frame_save_full_path is ' + frame_save_full_path)
             
@@ -135,4 +136,3 @@ if __name__=='__main__':
 
         else:
             continue
-        
